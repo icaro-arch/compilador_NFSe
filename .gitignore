@@ -1,0 +1,36 @@
+# ==============================================================================
+# DADOS FISCAIS SENSÍVEIS / LOTES REAIS (LGPD & SIGILO FISCAL)
+# ==============================================================================
+XML NOTA*/
+XML_NOTA*/
+xml_notas/
+lotes_xml/
+*.xml
+!examples/*.xml
+
+# Planilhas e exportações geradas com dados reais
+*.xlsx
+*.xls
+*.csv
+
+# ==============================================================================
+# BINÁRIOS E EMPACOTAMENTO (PYINSTALLER)
+# ==============================================================================
+*.exe
+build/
+build_tmp/
+dist/
+*.spec
+
+# ==============================================================================
+# AMBIENTE PYTHON E SISTEMA OPERACIONAL
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+.DS_Store
+Thumbs.db

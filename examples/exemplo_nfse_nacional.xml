@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS23037091200000000000191000000000000126090000000001">
+    <xLocEmi>Caucaia</xLocEmi>
+    <xLocPrestacao>Caucaia</xLocPrestacao>
+    <nNFSe>101</nNFSe>
+    <cLocIncid>2303709</cLocIncid>
+    <xLocIncid>Caucaia</xLocIncid>
+    <xTribNac>Execução, por empreitada ou subempreitada, de obras de construção civil, hidráulica ou elétrica.</xTribNac>
+    <xTribMun>Construção Civil e Engenharia</xTribMun>
+    <xNBS>Serviços de engenharia e construção</xNBS>
+    <verAplic>SefinNacional_1.0</verAplic>
+    <ambGer>2</ambGer>
+    <tpEmis>1</tpEmis>
+    <procEmi>1</procEmi>
+    <cStat>100</cStat>
+    <dhProc>2026-09-15T14:30:00-03:00</dhProc>
+    <nDFSe>10001</nDFSe>
+    <emit>
+      <CNPJ>00000000000191</CNPJ>
+      <IM>123456</IM>
+      <xNome>ENGENHARIA E SERVICOS EXEMPLO LTDA</xNome>
+      <xFant>ENGENHARIA EXEMPLO</xFant>
+      <enderNac>
+        <xLgr>AVENIDA EXEMPLO CENTRAL</xLgr>
+        <nro>1000</nro>
+        <xBairro>CENTRO</xBairro>
+        <cMun>2303709</cMun>
+        <UF>CE</UF>
+        <CEP>61600000</CEP>
+      </enderNac>
+      <fone>8530000000</fone>
+      <email>fiscal@engenhariaexemplo.com.br</email>
+    </emit>
+    <valores>
+      <vBC>10000.00</vBC>
+      <pAliqAplic>5.00</pAliqAplic>
+      <vISSQN>500.00</vISSQN>
+      <vTotalRet>1465.00</vTotalRet>
+      <vLiq>8535.00</vLiq>
+    </valores>
+    <IBSCBS>
+      <cLocalidadeIncid>2303709</cLocalidadeIncid>
+      <xLocalidadeIncid>Caucaia</xLocalidadeIncid>
+      <valores>
+        <vBC>10000.00</vBC>
+        <uf>
+          <pIBSUF>0.10</pIBSUF>
+        </uf>
+        <mun>
+          <pIBSMun>0.00</pIBSMun>
+        </mun>
+        <fed>
+          <pCBS>0.90</pCBS>
+        </fed>
+      </valores>
+      <totCIBS>
+        <gIBS>
+          <vIBSTot>10.00</vIBSTot>
+        </gIBS>
+        <gCBS>
+          <vCBS>90.00</vCBS>
+        </gCBS>
+      </totCIBS>
+    </IBSCBS>
+    <DPS versao="1.01">
+      <infDPS Id="DPS2303709120000000000019100001000000000000001">
+        <tpAmb>2</tpAmb>
+        <dhEmi>2026-09-15T14:25:00-03:00</dhEmi>
+        <serie>1</serie>
+        <nDPS>1</nDPS>
+        <dCompet>2026-09-01</dCompet>
+        <tpEmit>1</tpEmit>
+        <cLocEmi>2303709</cLocEmi>
+        <prest>
+          <CNPJ>00000000000191</CNPJ>
+          <IM>123456</IM>
+          <regTrib>
+            <opSimpNac>1</opSimpNac>
+            <regEspTrib>0</regEspTrib>
+          </regTrib>
+        </prest>
+        <toma>
+          <CNPJ>11111111000191</CNPJ>
+          <xNome>EMPRESA TOMADORA DEMONSTRACAO S.A.</xNome>
+          <end>
+            <endNac>
+              <cMun>2303709</cMun>
+              <CEP>61600000</CEP>
+            </endNac>
+            <xLgr>RODOVIA ESTADUAL EXEMPLO</xLgr>
+            <nro>500</nro>
+            <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          </end>
+          <fone>8531111111</fone>
+          <email>contabilidade@tomadoraexemplo.com.br</email>
+        </toma>
+        <serv>
+          <locPrest>
+            <cLocPrestacao>2303709</cLocPrestacao>
+          </locPrest>
+          <cServ>
+            <cTribNac>070201</cTribNac>
+            <cTribMun>0702</cTribMun>
+            <cNBS>101011000</cNBS>
+            <xDescServ>SERVIÇOS DE ENGENHARIA E CONSTRUÇÃO CIVIL - MEDIÇÃO DEMONSTRATIVA 01/2026.</xDescServ>
+          </cServ>
+          <obra>
+            <cObra>900000000175</cObra>
+          </obra>
+          <infoCompl>
+            <xInfComp>Documento XML fictício para demonstração e testes automatizados.</xInfComp>
+          </infoCompl>
+        </serv>
+        <valores>
+          <vServPrest>
+            <vServ>10000.00</vServ>
+          </vServPrest>
+          <trib>
+            <tribMun>
+              <tpRetISSQN>2</tpRetISSQN>
+              <pAliq>5.00</pAliq>
+              <cLocIncid>2303709</cLocIncid>
+            </tribMun>
+            <tribFed>
+              <piscofins>
+                <CST>01</CST>
+                <vBCPisCofins>10000.00</vBCPisCofins>
+                <pAliqPis>0.65</pAliqPis>
+                <pAliqCofins>3.00</pAliqCofins>
+                <vPis>65.00</vPis>
+                <vCofins>300.00</vCofins>
+              </piscofins>
+              <vRetCP>350.00</vRetCP>
+              <vRetIRRF>150.00</vRetIRRF>
+              <vRetCSLL>100.00</vRetCSLL>
+            </tribFed>
+          </trib>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>
