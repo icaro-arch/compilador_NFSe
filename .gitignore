@@ -17,6 +17,7 @@ lotes_xml/
 # BINÁRIOS E EMPACOTAMENTO (PYINSTALLER)
 # ==============================================================================
 *.exe
+!Compilador_NFSe.exe
 build/
 build_tmp/
 dist/

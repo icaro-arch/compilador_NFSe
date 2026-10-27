@@ -5,7 +5,23 @@
 ![SPED NFS-e](https://img.shields.io/badge/Padr%C3%A3o_SPED-NFS--e_v1.01-1F4E79?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licen%C3%A7a-MIT-green?style=for-the-badge)
 
-Aplicação desktop e CLI em Python para leitura, auditoria fiscal e consolidação de lotes de **Notas Fiscais de Serviços Eletrônicas (NFS-e)** emitidas no **Padrão Nacional SPED (`nfse.gov.br`)**, gerando pastas de trabalho **Excel (`.xlsx`)** estruturadas com **somas e contagens 100% dinâmicas sob filtro (`SUBTOTAL`)**, agrupamento funcional de colunas e demonstrativos executivos.
+[![Baixar Executável Windows](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F_BAIXAR_APLICATIVO_(WINDOWS)-Compilador__NFSe.exe-1B6B53?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/icaro-arch/compilador_NFSe/raw/main/Compilador_NFSe.exe)
+
+Aplicação desktop em Python para leitura, auditoria fiscal e consolidação de lotes de **Notas Fiscais de Serviços Eletrônicas (NFS-e)** emitidas no **Padrão Nacional SPED (`nfse.gov.br`)**, gerando pastas de trabalho **Excel (`.xlsx`)** estruturadas com **somas e contagens 100% dinâmicas sob filtro (`SUBTOTAL`)**, agrupamento funcional de colunas e demonstrativos executivos.
+
+---
+
+## 🚀 Como Utilizar (Pronto para Uso — Sem Instalar Nada)
+
+Para quem deseja apenas usar o programa no Windows, **não é necessário instalar Python nem nenhuma biblioteca**:
+
+### Passo a Passo Rápido:
+1. **Baixe o programa:** Clique no link direto abaixo para baixar o executável:
+   - 👉 **[📥 Clique aqui para baixar o `Compilador_NFSe.exe`](https://github.com/icaro-arch/compilador_NFSe/raw/main/Compilador_NFSe.exe)**
+2. **Abra o aplicativo:** Dê dois cliques no arquivo `Compilador_NFSe.exe` baixado *(caso o Windows exiba o aviso padrão do SmartScreen, clique em "Mais informações" $\rightarrow$ "Executar assim mesmo")*.
+3. **Escolha a pasta dos XMLs:** Clique em **"Procurar Pasta..."** e selecione a pasta onde estão as notas fiscais em `.xml` baixadas do portal `nfse.gov.br`.
+   - O programa fará a leitura instantânea das notas e **sugerirá automaticamente o nome do arquivo Excel** com base na empresa e competência identificadas.
+4. **Gere a planilha:** Clique no botão verde **"▶ COMPILAR NOTAS E GERAR EXCEL"** e, em seguida, em **"📊 Abrir Planilha no Excel"**.
 
 ---
 
@@ -60,36 +76,30 @@ flowchart LR
 
 ---
 
-## 🚀 Como Utilizar
+## 🛠️ Para Desenvolvedores (Execução via Código-Fonte Python)
 
-### Pré-requisitos (Execução via Código-Fonte)
+Caso deseje modificar o código-fonte ([`compilar_nfse.py`](compilar_nfse.py)) ou executar diretamente pelo Python:
+
+### 1. Instalar dependências
 ```bash
 pip install -r requirements.txt
 ```
 
-### 1. Modo Interface Gráfica (GUI)
-Execute diretamente o script Python (ou dê duplo clique em `Iniciar_Compilador_NFSe.bat`):
+### 2. Executar a Interface Gráfica via Python
 ```bash
 python compilar_nfse.py
 ```
 
-### 2. Modo Linha de Comando (CLI / Automação)
-Você também pode compilar lotes via terminal passando a pasta de entrada (teste rápido com o XML fictício da pasta `examples/`):
+### 3. Executar via Linha de Comando (CLI / Automação)
 ```bash
 python compilar_nfse.py --cli --input "examples" --output "demonstracao_nfse.xlsx"
 ```
 
----
-
-## 📦 Gerando o Executável Único (`.exe`) para Distribuição
-
-Para distribuir o aplicativo para outros computadores Windows sem necessidade de instalar Python:
-
+### 4. Recompilar o Executável (`.exe`) após alterações no código
 ```bash
 pip install pyinstaller
-python -m PyInstaller --noconfirm --onefile --windowed --name "Compilador_NFSe" compilar_nfse.py
+python -m PyInstaller --noconfirm --onefile --windowed --name "Compilador_NFSe" --distpath "." compilar_nfse.py
 ```
-O executável independente **`Compilador_NFSe.exe`** será gerado na pasta `dist/`.
 
 ---
 
