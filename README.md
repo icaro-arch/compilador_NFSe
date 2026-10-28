@@ -18,7 +18,7 @@ Para quem deseja apenas usar o programa no Windows, **não é necessário instal
 ### Passo a Passo Rápido:
 1. **Baixe o programa:** Clique no link direto abaixo para baixar o executável:
    - 👉 **[📥 Clique aqui para baixar o `Compilador_NFSe.exe`](https://github.com/icaro-arch/compilador_NFSe/raw/main/Compilador_NFSe.exe)**
-2. **Abra o aplicativo:** Dê dois cliques no arquivo `Compilador_NFSe.exe` baixado *(caso o Windows exiba o aviso padrão do SmartScreen, clique em "Mais informações" $\rightarrow$ "Executar assim mesmo")*.
+2. **Abra o aplicativo:** Dê dois cliques no arquivo `Compilador_NFSe.exe` baixado *(caso o Windows exiba o aviso padrão do SmartScreen, clique em "Mais informações" → "Executar assim mesmo")*.
 3. **Escolha a pasta de XMLs ou o arquivo `.CSV` (ADN):** Clique em **"Procurar Pasta..."** (para selecionar uma pasta com notas em `.xml`) ou em **"Selecionar CSV / XML..."** (para selecionar um arquivo `.csv` exportado do Ambiente de Dados Nacional — ADN com XMLs embutidos).
    - O programa fará a leitura instantânea das notas e **sugerirá automaticamente o nome do arquivo Excel** com base na empresa e competência identificadas.
 4. **Gere a planilha:** Clique no botão verde **"▶ COMPILAR NOTAS E GERAR EXCEL"** e, em seguida, em **"📊 Abrir Planilha no Excel"**.
