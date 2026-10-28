@@ -166,19 +166,171 @@ REG_ESP_MAP = {
     "6": "6 - Sociedade de Profissionais",
 }
 
+# Aumenta o limite de tamanho de campo do módulo CSV para suportar XMLs completos dentro de células
+try:
+    csv.field_size_limit(min(sys.maxsize, 2147483647))
+except OverflowError:
+    csv.field_size_limit(2147483647)
 
-def scan_folder_quick(folder_path: str) -> dict:
-    """
-    Faz uma pré-leitura rápida da pasta selecionada para alimentar a interface gráfica
-    e sugerir automaticamente o nome ideal para o arquivo Excel.
-    """
-    p = Path(folder_path)
-    if not p.exists() or not p.is_dir():
-        return {"valid": False, "count": 0, "error": "Pasta não encontrada."}
 
+def iter_xml_from_adn_csv(csv_path: Path):
+    """
+    Lê um arquivo CSV exportado do ADN (ex.: DADOS_ADN.csv delimitado por '|' ou ';')
+    que contenha uma coluna com o XML da NFS-e (ex.: 'arquivo_xml_str').
+    Produz tuplas: (identificador_origem, texto_xml, metadados_adn).
+    """
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            with open(csv_path, mode="r", encoding=enc, newline="") as f:
+                first_line = f.readline()
+                if not first_line:
+                    return
+                second_line = f.readline()
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        return
+
+    # Detecta delimitador predominante no cabeçalho
+    delim = "|"
+    for candidate_delim in ("|", ";", ",", "\t"):
+        if candidate_delim in first_line:
+            delim = candidate_delim
+            break
+
+    # Verifica rapidamente se o CSV aparenta conter XML de NFS-e
+    combined_sample = (first_line + "\n" + second_line).lower()
+    if "xml" not in combined_sample and "<nfse" not in combined_sample and "<infnfse" not in combined_sample:
+        return
+
+    with open(csv_path, mode="r", encoding=enc, errors="replace", newline="") as f:
+        reader = csv.reader(f, delimiter=delim)
+        try:
+            header = [h.strip().lower() for h in next(reader)]
+        except StopIteration:
+            return
+
+        xml_col_idx = None
+        nsu_col_idx = None
+        id_col_idx = None
+
+        for i, col_name in enumerate(header):
+            if "xml" in col_name:
+                xml_col_idx = i
+            elif col_name == "nsu":
+                nsu_col_idx = i
+            elif col_name == "id":
+                id_col_idx = i
+
+        for row_num, row in enumerate(reader, start=2):
+            if not row:
+                continue
+
+            # Se a coluna XML não tinha 'xml' no nome do cabeçalho, detecta pelo conteúdo da célula
+            if xml_col_idx is None:
+                for i, cell_val in enumerate(row):
+                    if "<NFSe" in cell_val or "<infNFSe" in cell_val or "<?xml" in cell_val:
+                        xml_col_idx = i
+                        break
+                if xml_col_idx is None:
+                    continue
+
+            if xml_col_idx >= len(row):
+                continue
+
+            raw_xml_str = row[xml_col_idx].strip()
+            if not raw_xml_str or ("<" not in raw_xml_str):
+                continue
+
+            nsu_val = row[nsu_col_idx].strip() if (nsu_col_idx is not None and nsu_col_idx < len(row)) else ""
+            id_val = row[id_col_idx].strip() if (id_col_idx is not None and id_col_idx < len(row)) else ""
+
+            if nsu_val:
+                src_label = f"{csv_path.name} [NSU {nsu_val}]"
+            elif id_val:
+                src_label = f"{csv_path.name} [ID {id_val}]"
+            else:
+                src_label = f"{csv_path.name}#L{row_num}"
+
+            text_xml = CTRL_CHARS_RE.sub("", raw_xml_str)
+            text_xml = re.sub(
+                r'(<\?xml[^>]*encoding=[\'"])([^\'"]+)([\'"])',
+                r"\1UTF-8\3",
+                text_xml,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+            yield (src_label, text_xml, {"nsu": nsu_val, "id_adn": id_val})
+
+
+def collect_xml_entries(source_path: str) -> tuple[list[tuple[str, str, dict]], str]:
+    """
+    Aceita tanto uma pasta (contendo arquivos .xml ou arquivos .csv do ADN)
+    quanto o caminho direto de um arquivo .csv ou .xml.
+    Retorna (lista_de_entradas, descricao_origem).
+    """
+    p = Path(source_path)
+    if not p.exists():
+        return [], "Caminho não encontrado."
+
+    entries = []
+    if p.is_file():
+        ext = p.suffix.lower()
+        if ext == ".csv":
+            entries.extend(iter_xml_from_adn_csv(p))
+            if not entries:
+                return [], "O arquivo CSV selecionado não contém coluna com XML de NFS-e (padrão ADN)."
+            return entries, "CSV ADN"
+        elif ext == ".xml":
+            try:
+                entries.append((p.name, decode_xml_bytes(p.read_bytes()), {}))
+                return entries, "Arquivo XML"
+            except Exception as exc:
+                return [], f"Erro ao ler XML: {exc}"
+        else:
+            return [], "Formato de arquivo não suportado (selecione uma pasta, .csv do ADN ou .xml)."
+
+    # Se for pasta: procura primeiro arquivos .xml; se não houver (ou em conjunto), procura CSVs do ADN
     xml_files = sorted(p.glob("*.xml"))
-    if not xml_files:
-        return {"valid": False, "count": 0, "error": "Nenhum arquivo .xml encontrado na pasta."}
+    for f in xml_files:
+        try:
+            entries.append((f.name, decode_xml_bytes(f.read_bytes()), {}))
+        except Exception:
+            continue
+
+    csv_files = sorted(p.glob("*.csv"))
+    csv_adn_count = 0
+    for cf in csv_files:
+        csv_entries = list(iter_xml_from_adn_csv(cf))
+        if csv_entries:
+            csv_adn_count += 1
+            entries.extend(csv_entries)
+
+    if not entries:
+        return [], "Nenhum arquivo .xml ou .csv do ADN encontrado na pasta selecionada."
+
+    if xml_files and csv_adn_count:
+        origem_tipo = "XMLs + CSV ADN"
+    elif csv_adn_count:
+        origem_tipo = "CSV ADN"
+    else:
+        origem_tipo = "XMLs"
+    return entries, origem_tipo
+
+
+def scan_folder_quick(source_path: str) -> dict:
+    """
+    Faz uma pré-leitura rápida da pasta ou arquivo (.csv ADN / .xml) selecionado
+    para alimentar a interface gráfica e sugerir automaticamente o nome ideal para o Excel.
+    """
+    p = Path(source_path)
+    if not p.exists():
+        return {"valid": False, "count": 0, "error": "Caminho não encontrado."}
+
+    entries, origem_info = collect_xml_entries(source_path)
+    if not entries:
+        return {"valid": False, "count": 0, "error": origem_info}
 
     tomadores = Counter()
     prestadores = Counter()
@@ -187,10 +339,8 @@ def scan_folder_quick(folder_path: str) -> dict:
     total_servicos = 0.0
     valid_count = 0
 
-    for f in xml_files:
+    for _, text_xml, _ in entries:
         try:
-            raw_bytes = f.read_bytes()
-            text_xml = decode_xml_bytes(raw_bytes)
             root = ET.fromstring(text_xml)
             strip_ns(root)
 
@@ -222,7 +372,7 @@ def scan_folder_quick(folder_path: str) -> dict:
         return {
             "valid": False,
             "count": 0,
-            "error": "Os arquivos XML da pasta não seguem o padrão NFS-e esperado.",
+            "error": "Os registros encontrados não seguem o padrão XML NFS-e esperado.",
         }
 
     # Determina empresa principal (Tomador predominante ou Prestador predominante)
@@ -252,20 +402,19 @@ def scan_folder_quick(folder_path: str) -> dict:
         periodo_str = datetime.now().strftime("%Y")
         periodo_label = periodo_str
 
-    # Sugestões inteligentes de nome
-    folder_name_upper = p.name.upper()
+    # Sugestões inteligentes de nome (baseadas no nome do arquivo CSV ou da pasta)
+    base_name_raw = p.stem.upper() if p.is_file() else p.name.upper()
     for prefix in ("XML NOTAS ", "XML NOTA ", "XML NFSE ", "XML_NOTA_", "XML_NOTAS_", "XML ", "NOTAS "):
-        if folder_name_upper.startswith(prefix):
-            folder_name_upper = folder_name_upper[len(prefix):].strip()
+        if base_name_raw.startswith(prefix):
+            base_name_raw = base_name_raw[len(prefix):].strip()
 
-    slug_folder = slugify_filename(folder_name_upper)
+    slug_folder = slugify_filename(base_name_raw)
     slug_empresa = slugify_filename(empresa_principal)
 
     sugestao_pasta = f"NOTAS_FISCAIS_{slug_folder}.xlsx" if slug_folder else f"NOTAS_FISCAIS_{slug_empresa}_{periodo_str}.xlsx"
     sugestao_empresa = f"NOTAS_FISCAIS_{slug_empresa}_{periodo_str}.xlsx"
 
-    # Se o nome da pasta for informativo (ex.: OMNIA DATACENTER), prioriza como sugestão 1
-    if slug_folder and slug_folder not in ("XML", "NOTAS", "NFSE"):
+    if slug_folder and slug_folder not in ("XML", "NOTAS", "NFSE", "SEFIN"):
         nome_sugerido = sugestao_pasta
     else:
         nome_sugerido = sugestao_empresa
@@ -275,7 +424,8 @@ def scan_folder_quick(folder_path: str) -> dict:
     return {
         "valid": True,
         "count": valid_count,
-        "total_xml_files": len(xml_files),
+        "origem_tipo": origem_info,
+        "total_xml_files": len(entries),
         "empresa_principal": empresa_principal,
         "papel_empresa": papel_empresa,
         "qtd_fornecedores": len(prestadores),
@@ -289,26 +439,24 @@ def scan_folder_quick(folder_path: str) -> dict:
     }
 
 
-def load_all_xml_records(folder_path: str, progress_cb=None) -> list[dict]:
-    """Lê todos os XMLs da pasta e retorna a lista de dicionários estruturados."""
-    p = Path(folder_path)
-    xml_files = sorted(p.glob("*.xml"))
-    total_files = len(xml_files)
+def load_all_xml_records(source_path: str, progress_cb=None) -> list[dict]:
+    """Lê todos os XMLs (de uma pasta ou de um CSV do ADN) e retorna a lista de dicionários estruturados."""
+    entries, _ = collect_xml_entries(source_path)
+    total_files = len(entries)
+    step_notify = max(10, total_files // 40) if total_files > 0 else 10
 
     parsed_items = []
     chave_counts = Counter()
 
-    for idx, f in enumerate(xml_files, start=1):
-        if progress_cb and (idx % 10 == 0 or idx == total_files):
-            progress_cb(idx, total_files, f"Lendo XML ({idx}/{total_files}): {f.name}")
+    for idx, (src_label, text_xml, meta) in enumerate(entries, start=1):
+        if progress_cb and (idx % step_notify == 0 or idx == total_files):
+            progress_cb(idx, total_files, f"Processando nota ({idx}/{total_files}): {src_label}")
 
         try:
-            raw_bytes = f.read_bytes()
-            text_xml = decode_xml_bytes(raw_bytes)
             root = ET.fromstring(text_xml)
             strip_ns(root)
         except Exception as exc:
-            print(f"[AVISO] Falha ao ler {f.name}: {exc}", file=sys.stderr)
+            print(f"[AVISO] Falha ao ler {src_label}: {exc}", file=sys.stderr)
             continue
 
         inf = root if root.tag == "infNFSe" else root.find(".//infNFSe")
@@ -317,12 +465,12 @@ def load_all_xml_records(folder_path: str, progress_cb=None) -> list[dict]:
 
         chave_id = clean_text(inf.attrib.get("Id", ""))
         chave_counts[chave_id] += 1
-        parsed_items.append((f, inf, chave_id))
+        parsed_items.append((src_label, inf, chave_id, meta))
 
     seen_chaves = set()
     records = []
 
-    for f, inf, chave_id in parsed_items:
+    for src_label, inf, chave_id, meta in parsed_items:
         dps = inf.find("DPS/infDPS")
         serv = dps.find("serv") if dps is not None else None
         c_serv = serv.find("cServ") if serv is not None else None
@@ -436,7 +584,8 @@ def load_all_xml_records(folder_path: str, progress_cb=None) -> list[dict]:
         cnpj_toma_raw = find_text(dps, "toma/CNPJ") or find_text(dps, "toma/CPF")
 
         rec = {
-            "Arquivo": f.name,
+            "Arquivo": src_label,
+            "NSU": meta.get("nsu", ""),
             "StatusDuplicidade": status_dup,
             "ChaveNFSe": chave_id,
             "NumeroNFSe": find_text(inf, "nNFSe"),
@@ -618,8 +767,9 @@ NOTAS_COL_DEFS = [
     {"header": "Número DFSe", "prop": "NumeroDFSe", "width": 14, "align": "center", "type": "text", "group_color": "4A5568", "outline": 1},
     {"header": "Série DPS", "prop": "SerieDPS", "width": 12, "align": "center", "type": "text", "group_color": "4A5568", "outline": 1},
     {"header": "Número DPS", "prop": "NumeroDPS", "width": 14, "align": "center", "type": "text", "group_color": "4A5568", "outline": 1},
+    {"header": "NSU (ADN)", "prop": "NSU", "width": 16, "align": "center", "type": "text", "group_color": "4A5568", "outline": 1},
     {"header": "Chave NFS-e", "prop": "ChaveNFSe", "width": 52, "align": "center", "type": "text", "group_color": "4A5568", "outline": 1},
-    {"header": "Arquivo", "prop": "Arquivo", "width": 30, "align": "left", "type": "text", "group_color": "4A5568", "outline": 1},
+    {"header": "Arquivo / Origem", "prop": "Arquivo", "width": 32, "align": "left", "type": "text", "group_color": "4A5568", "outline": 1},
 ]
 
 
@@ -1567,11 +1717,11 @@ def launch_gui():
     main_frame.pack(fill="both", expand=True)
 
     # ==========================================================================
-    # PASSO 1: SELEÇÃO DA PASTA DE XMLs + CARDS DE DIAGNÓSTICO DO LOTE
+    # PASSO 1: SELEÇÃO DA PASTA DE XMLs OU ARQUIVO CSV ADN + CARDS DE DIAGNÓSTICO
     # ==========================================================================
     step1 = tk.LabelFrame(
         main_frame,
-        text=" 1. Pasta com os Arquivos XML (Origem) ",
+        text=" 1. Origem das Notas Fiscais (Pasta de XMLs ou Arquivo .CSV) ",
         font=("Segoe UI", 10, "bold"),
         fg="#1F4E79",
         bg="#FFFFFF",
@@ -1610,20 +1760,21 @@ def launch_gui():
     make_info_card(cards_frame, 2, "FORNECEDORES / PERÍODO", var_card_periodo, "#F4F7FA", "#2F5597")
     make_info_card(cards_frame, 3, "TOTAL BRUTO SERVIÇOS", var_card_valor, "#F2F7F5", "#1B6B53")
 
-    def on_scan_folder(folder_str: str):
+    def on_scan_folder(source_str: str):
         nonlocal current_scan
-        info = scan_folder_quick(folder_str)
+        info = scan_folder_quick(source_str)
         current_scan = info
         if not info.get("valid"):
-            var_card_notas.set("0 arquivos XML")
-            var_card_empresa_lbl.set("STATUS DA PASTA")
-            var_card_empresa.set(info.get("error", "Pasta inválida"))
+            var_card_notas.set("0 notas válidas")
+            var_card_empresa_lbl.set("STATUS DA ORIGEM")
+            var_card_empresa.set(info.get("error", "Origem inválida"))
             var_card_periodo.set("-")
             var_card_valor.set("R$ 0,00")
-            var_status.set(f"Atenção: {info.get('error', 'Selecione uma pasta com arquivos XML.')}")
+            var_status.set(f"Atenção: {info.get('error', 'Selecione uma pasta ou CSV válido.')}")
             return
 
-        var_card_notas.set(f"✔ {info['count']} notas XML")
+        origem_tag = info.get("origem_tipo", "XML")
+        var_card_notas.set(f"✔ {info['count']} ({origem_tag})")
         var_card_empresa_lbl.set(f"{info['papel_empresa'].upper()} PRINCIPAL IDENTIFICADO")
         emp_txt = info["empresa_principal"]
         if len(emp_txt) > 34:
@@ -1633,14 +1784,33 @@ def launch_gui():
         var_card_valor.set(fmt_brl(info["total_servicos"]))
 
         var_filename.set(info["nome_sugerido"])
-        parent_dir = str(Path(folder_str).resolve().parent)
+        p_src = Path(source_str).resolve()
+        parent_dir = str(p_src.parent)
         var_output_dir.set(parent_dir)
-        var_status.set(f"Pasta validada ({info['count']} notas encontradas).")
+        var_status.set(f"Origem validada ({info['count']} notas via {origem_tag}).")
         update_open_btn_state()
 
-    def browse_input():
-        initial = var_input_dir.get() if os.path.isdir(var_input_dir.get()) else str(base_dir)
-        chosen = filedialog.askdirectory(title="Selecione a pasta contendo os XMLs das Notas Fiscais", initialdir=initial)
+    def browse_input_folder():
+        cur = var_input_dir.get().strip()
+        initial = cur if os.path.isdir(cur) else (str(Path(cur).parent) if os.path.exists(cur) else str(base_dir))
+        chosen = filedialog.askdirectory(title="Selecione a pasta contendo os XMLs ou CSV do ADN", initialdir=initial)
+        if chosen:
+            var_input_dir.set(chosen)
+            on_scan_folder(chosen)
+
+    def browse_input_file():
+        cur = var_input_dir.get().strip()
+        initial = cur if os.path.isdir(cur) else (str(Path(cur).parent) if os.path.exists(cur) else str(base_dir))
+        chosen = filedialog.askopenfilename(
+            title="Selecione o arquivo CSV (ADN) ou XML de Notas Fiscais",
+            initialdir=initial,
+            filetypes=[
+                ("Arquivos Fiscais (CSV ADN ou XML)", "*.csv *.xml"),
+                ("Arquivo CSV do ADN (*.csv)", "*.csv"),
+                ("Arquivo XML NFS-e (*.xml)", "*.xml"),
+                ("Todos os arquivos (*.*)", "*.*"),
+            ],
+        )
         if chosen:
             var_input_dir.set(chosen)
             on_scan_folder(chosen)
@@ -1648,8 +1818,11 @@ def launch_gui():
     entry_input.bind("<Return>", lambda _: on_scan_folder(var_input_dir.get().strip()))
     entry_input.bind("<FocusOut>", lambda _: on_scan_folder(var_input_dir.get().strip()))
 
-    btn_browse_in = ttk.Button(row1, text="Procurar Pasta...", command=browse_input)
-    btn_browse_in.pack(side="left")
+    btn_browse_file = ttk.Button(row1, text="Selecionar CSV ou XML...", command=browse_input_file)
+    btn_browse_file.pack(side="right")
+
+    btn_browse_in = ttk.Button(row1, text="Procurar Pasta...", command=browse_input_folder)
+    btn_browse_in.pack(side="right", padx=(0, 6))
 
     # ==========================================================================
     # PASSO 2: NOME SUGERIDO E PASTA DE SAÍDA
@@ -1819,8 +1992,8 @@ def launch_gui():
         out_dir = var_output_dir.get().strip()
         fname = var_filename.get().strip()
 
-        if not in_dir or not os.path.isdir(in_dir):
-            messagebox.showerror("Erro", "Selecione uma pasta válida contendo os arquivos XML.")
+        if not in_dir or not os.path.exists(in_dir):
+            messagebox.showerror("Erro", "Selecione uma pasta ou arquivo CSV/XML válido.")
             return
         if not fname:
             fname = "NOTAS_FISCAIS_COMPILADAS.xlsx"
@@ -1896,8 +2069,8 @@ def launch_gui():
 
     btn_compile.configure(command=run_compilation)
 
-    # Faz o scan automático inicial se a pasta padrão já existir
-    if os.path.isdir(var_input_dir.get()):
+    # Faz o scan automático inicial se a pasta ou arquivo padrão já existir
+    if os.path.exists(var_input_dir.get()):
         on_scan_folder(var_input_dir.get())
 
     # Ajusta automaticamente a altura da janela ao conteúdo para não sobrar nem cortar nada
